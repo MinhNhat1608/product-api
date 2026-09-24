@@ -7,9 +7,6 @@ on:
     types:
       - completed
 
-concurrency:
-  group: deploy-local-production
-  cancel-in-progress: true
 
 jobs:
   deploy-local:
