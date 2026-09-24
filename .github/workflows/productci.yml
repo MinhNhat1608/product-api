@@ -9,21 +9,86 @@ on:
       - main
 
 jobs:
-  build:
+  test-and-build:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Lấy source code từ GitHub
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      # 2. Cài Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
+      # 3. Cài dependencies, bao gồm Jest và Supertest
       - name: Install dependencies
         run: npm ci
 
+      # 4. Khởi động MongoDB + Product API bằng Docker Compose
+      - name: Start Docker Compose
+        run: docker compose up -d --build
+
+      # 5. Chờ MongoDB và Product API healthy
+      - name: Wait for services to become healthy
+        run: |
+          echo "Waiting for MongoDB..."
+
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' nammongodb 2>/dev/null || echo "starting")
+            echo "MongoDB status: $STATUS"
+
+            if [ "$STATUS" = "healthy" ]; then
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$(docker inspect --format='{{.State.Health.Status}}' nammongodb)" != "healthy" ]; then
+            echo "MongoDB did not become healthy"
+            docker compose logs mongodb
+            exit 1
+          fi
+
+          echo "Waiting for Product API..."
+
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' product-api-container 2>/dev/null || echo "starting")
+            echo "Product API status: $STATUS"
+
+            if [ "$STATUS" = "healthy" ]; then
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$(docker inspect --format='{{.State.Health.Status}}' product-api-container)" != "healthy" ]; then
+            echo "Product API did not become healthy"
+            docker compose logs product-api
+            exit 1
+          fi
+
+          docker compose ps
+
+      # 6. Chạy Jest + Supertest
+      - name: Run API tests
+        run: npm test
+
+      # 7. Kiểm tra Docker image build được
       - name: Build Docker image
         run: docker build -t product-api .
+
+      # 8. Nếu CI lỗi thì in log để dễ tìm nguyên nhân
+      - name: Show Docker logs on failure
+        if: failure()
+        run: docker compose logs
+
+      # 9. Luôn dừng container sau khi CI kết thúc
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose down
