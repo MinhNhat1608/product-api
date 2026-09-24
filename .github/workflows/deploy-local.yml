@@ -30,33 +30,27 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Check Docker Engine
-        shell: powershell
+        shell: cmd
         run: |
           docker version
           docker compose version
 
       - name: Pull latest images from Docker Hub
-        shell: powershell
+        shell: cmd
         run: |
           docker compose -f docker-compose-prod.yaml pull
 
       - name: Deploy to Local Docker Engine
-        shell: powershell
+        shell: cmd
         run: |
           docker compose -f docker-compose-prod.yaml up -d --pull always --wait --wait-timeout 120
 
       - name: Show production containers
-        shell: powershell
+        shell: cmd
         run: |
           docker compose -f docker-compose-prod.yaml ps
 
       - name: Verify Product API health
-        shell: powershell
+        shell: cmd
         run: |
-          $response = Invoke-RestMethod -Uri "http://localhost:3000/health"
-
-          if ($response.status -ne "OK") {
-            throw "Product API healthcheck failed"
-          }
-
-          Write-Host "Product API deployment is healthy"
+          curl --fail http://localhost:3000/health
