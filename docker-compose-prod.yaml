@@ -1,3 +1,5 @@
+name: product-api-prod
+
 services:
   mongodb:
     image: mongo:7

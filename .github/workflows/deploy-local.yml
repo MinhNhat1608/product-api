@@ -1,0 +1,62 @@
+name: Deploy Local Production
+
+on:
+  workflow_run:
+    workflows:
+      - "Product API CI/CD"
+    types:
+      - completed
+
+concurrency:
+  group: deploy-local-production
+  cancel-in-progress: true
+
+jobs:
+  deploy-local:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Check Docker Engine
+        shell: powershell
+        run: |
+          docker version
+          docker compose version
+
+      - name: Pull latest images from Docker Hub
+        shell: powershell
+        run: |
+          docker compose -f docker-compose-prod.yaml pull
+
+      - name: Deploy to Local Docker Engine
+        shell: powershell
+        run: |
+          docker compose -f docker-compose-prod.yaml up -d --pull always --wait --wait-timeout 120
+
+      - name: Show production containers
+        shell: powershell
+        run: |
+          docker compose -f docker-compose-prod.yaml ps
+
+      - name: Verify Product API health
+        shell: powershell
+        run: |
+          $response = Invoke-RestMethod -Uri "http://localhost:3000/health"
+
+          if ($response.status -ne "OK") {
+            throw "Product API healthcheck failed"
+          }
+
+          Write-Host "Product API deployment is healthy"
