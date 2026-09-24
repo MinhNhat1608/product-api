@@ -1,0 +1,63 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: nammongodb-prod
+
+    ports:
+      - "27017:27017"
+
+    volumes:
+      - mongo-prod-data:/data/db
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping').ok"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
+  product-api:
+    image: minhnhat1608/product-api:latest
+    container_name: product-api-prod
+
+    pull_policy: always
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://mongodb:27017/productdb
+
+    restart: unless-stopped
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
+volumes:
+  mongo-prod-data:
