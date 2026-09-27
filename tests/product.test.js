@@ -18,7 +18,6 @@ describe("Product API CRUD", () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data.pid).toBe("TEST001");
 
-    // Dọn dữ liệu sau test
     await api.delete("/api/products/TEST001");
   });
 
@@ -95,6 +94,14 @@ describe("Product API CRUD", () => {
     const check = await api.get("/api/products/TEST004");
 
     expect(check.statusCode).toBe(404);
+  });
+
+
+  test("GET /health - API is healthy", async () => {
+    const response = await api.get("/health");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.status).toBe("OK");
   });
 
 });
