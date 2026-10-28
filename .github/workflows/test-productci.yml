@@ -1,3 +1,4 @@
+
 name: Test Product CI
 
 on:
@@ -11,9 +12,14 @@ on:
 
   workflow_dispatch:
 
+concurrency:
+  group: product-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   basic-ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout source code
@@ -26,7 +32,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Check JavaScript syntax
         run: |
@@ -38,3 +44,24 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t product-api:test .
+
+      - name: Start containers
+        run: docker compose up -d
+
+      - name: Wait for Product API
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+
+      - name: Run Jest tests
+        run: npm test
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down
