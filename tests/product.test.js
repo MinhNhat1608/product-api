@@ -102,6 +102,7 @@ describe("Product API CRUD", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.body.status).toBe("OK");
+    expect(response.body).toHaveProperty("status");
   });
 
 });
