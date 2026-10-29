@@ -19,10 +19,12 @@ describe("Product API - Additional Tests", () => {
 
     expect(response.statusCode).toBe(404);
   });
-test("GET /health - Kiem tra status", async () => {
-  const response = await api.get("/health");
 
-  expect(response.statusCode).toBe(200);
-  expect(response.body).toHaveProperty("status", "YES");
-});
+  test("GET /health - Kiem tra status", async () => {
+    const response = await api.get("/health");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("status", "OK");
+  });
+
 });
